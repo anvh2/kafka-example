@@ -12,13 +12,13 @@ type message struct {
 	message string
 }
 
-// KafkaProducer -
-type KafkaProducer struct {
+// Producer -
+type Producer struct {
 	producer sarama.SyncProducer
 }
 
-// NewKafkaProducer -
-func NewKafkaProducer(brokers []string) (*KafkaProducer, error) {
+// NewProducer -
+func NewProducer(brokers []string) (*Producer, error) {
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
@@ -27,18 +27,18 @@ func NewKafkaProducer(brokers []string) (*KafkaProducer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &KafkaProducer{
+	return &Producer{
 		producer: producer,
 	}, nil
 }
 
 // Close -
-func (p *KafkaProducer) Close() {
+func (p *Producer) Close() {
 	p.producer.Close()
 }
 
 // SendMessage ...
-func (p *KafkaProducer) SendMessage(topic string, message string) error {
+func (p *Producer) SendMessage(topic string, message string) error {
 	if topic == "" || message == "" {
 		return errors.New("Empty topic or message")
 	}

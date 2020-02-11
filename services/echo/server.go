@@ -1,6 +1,7 @@
 package echo
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -9,12 +10,12 @@ import (
 )
 
 type Server struct {
-	producer *producer.KafkaProducer
+	producer *producer.Producer
 }
 
 // NewServer ...
 func NewServer() *Server {
-	producer, err := producer.NewKafkaProducer(viper.GetStringSlice("kafka.brokers"))
+	producer, err := producer.NewProducer(viper.GetStringSlice("kafka.brokers"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,6 +29,10 @@ func (s *Server) Run() {
 	defer s.producer.Close()
 	for {
 		time.Sleep(2 * time.Second)
-		s.producer.SendMessage(viper.GetString("kafka.topic"), "Hello world")
+		fmt.Println("Push message")
+		err := s.producer.SendMessage(viper.GetString("kafka.topic"), "Hello world")
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }

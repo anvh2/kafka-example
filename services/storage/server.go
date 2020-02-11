@@ -13,15 +13,15 @@ import (
 )
 
 type Server struct {
-	consumer *consumer.KafkaConsumer
+	consumer *consumer.Consumer
 }
 
 // NewServer ...
 func NewServer() *Server {
 	server := &Server{}
 	var err error
-	server.consumer, err = consumer.NewKafkaConsumer(viper.GetStringSlice(""),
-		viper.GetString(""), server.handleConsumerMessage)
+	server.consumer, err = consumer.NewConsumer(viper.GetStringSlice("kafka.brokers"),
+		viper.GetString("kafka.topic"), server.handleConsumerMessage)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -9,8 +9,8 @@ import (
 
 type process func(message *sarama.ConsumerMessage)
 
-// KafkaConsumer -
-type KafkaConsumer struct {
+// Consumer -
+type Consumer struct {
 	brokers    []string
 	topic      string
 	consumer   sarama.Consumer
@@ -21,8 +21,8 @@ type KafkaConsumer struct {
 	quit       chan struct{}
 }
 
-// NewKafkaConsumer -
-func NewKafkaConsumer(brokers []string, topic string, process process) (*KafkaConsumer, error) {
+// NewConsumer -
+func NewConsumer(brokers []string, topic string, process process) (*Consumer, error) {
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_4_0_0
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
@@ -36,8 +36,9 @@ func NewKafkaConsumer(brokers []string, topic string, process process) (*KafkaCo
 	if err != nil {
 		return nil, err
 	}
+	log.Println("PARTITIONS:", partitions)
 
-	return &KafkaConsumer{
+	return &Consumer{
 		brokers:    brokers,
 		topic:      topic,
 		consumer:   consumer,
@@ -50,7 +51,7 @@ func NewKafkaConsumer(brokers []string, topic string, process process) (*KafkaCo
 }
 
 // Start -
-func (c *KafkaConsumer) Start() {
+func (c *Consumer) Start() {
 	for _, partition := range c.partitions {
 		pc, err := c.consumer.ConsumePartition(c.topic, partition, sarama.OffsetOldest)
 		if err != nil {
@@ -74,16 +75,19 @@ func (c *KafkaConsumer) Start() {
 
 		// process message
 		go func() {
-			select {
-			case message := <-c.messages:
-				c.process(message)
-				log.Printf("Partition:\t%d\n", message.Partition)
-				log.Printf("Offset:\t%d\n", message.Offset)
-				log.Printf("Key:\t%s\n", string(message.Key))
-				log.Printf("Value:\t%s\n", string(message.Value))
-				log.Println()
-			case <-c.quit:
-				return
+			for {
+				select {
+				case message := <-c.messages:
+					// c.process(message)
+					log.Printf("Partition:\t%d\n", message.Partition)
+					log.Printf("Offset:\t%d\n", message.Offset)
+					log.Printf("Key:\t%s\n", string(message.Key))
+					log.Printf("Value:\t%s\n", string(message.Value))
+					log.Println()
+				case <-c.quit:
+					log.Println("Quit process message")
+					return
+				}
 			}
 		}()
 	}
@@ -92,7 +96,7 @@ func (c *KafkaConsumer) Start() {
 }
 
 // Stop -
-func (c *KafkaConsumer) Stop() {
+func (c *Consumer) Stop() {
 	close(c.quit)
 	log.Println("Quit consume")
 	close(c.messages)
