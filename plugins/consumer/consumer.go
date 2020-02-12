@@ -19,10 +19,11 @@ type Consumer struct {
 	process    process
 	wait       *sync.WaitGroup
 	quit       chan struct{}
+	numWorker  int32
 }
 
 // NewConsumer -
-func NewConsumer(brokers []string, topic string, process process) (*Consumer, error) {
+func NewConsumer(brokers []string, topic string, process process, numWorker int32) (*Consumer, error) {
 	config := sarama.NewConfig()
 	config.Version = sarama.V2_4_0_0
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
@@ -47,6 +48,7 @@ func NewConsumer(brokers []string, topic string, process process) (*Consumer, er
 		process:    process,
 		wait:       &sync.WaitGroup{},
 		quit:       make(chan struct{}),
+		numWorker:  numWorker,
 	}, nil
 }
 
@@ -74,22 +76,27 @@ func (c *Consumer) Start() {
 		}(pc)
 
 		// process message
-		go func() {
-			for {
-				select {
-				case message := <-c.messages:
-					// c.process(message)
-					log.Printf("Partition:\t%d\n", message.Partition)
-					log.Printf("Offset:\t%d\n", message.Offset)
-					log.Printf("Key:\t%s\n", string(message.Key))
-					log.Printf("Value:\t%s\n", string(message.Value))
-					log.Println()
-				case <-c.quit:
-					log.Println("Quit process message")
-					return
+		for i := int32(0); i < c.numWorker; i++ {
+			c.wait.Add(1)
+			go func(idx int32) {
+				defer c.wait.Done()
+				for {
+					select {
+					case message := <-c.messages:
+						c.process(message)
+						log.Printf("Worker:\t%d\n", idx)
+						log.Printf("Partition:\t%d\n", message.Partition)
+						log.Printf("Offset:\t%d\n", message.Offset)
+						log.Printf("Key:\t%s\n", string(message.Key))
+						log.Printf("Value:\t%s\n", string(message.Value))
+						log.Println()
+					case <-c.quit:
+						log.Println("Quit process message")
+						return
+					}
 				}
-			}
-		}()
+			}(i)
+		}
 	}
 
 	c.wait.Wait()

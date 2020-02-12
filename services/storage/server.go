@@ -21,7 +21,7 @@ func NewServer() *Server {
 	server := &Server{}
 	var err error
 	server.consumer, err = consumer.NewConsumer(viper.GetStringSlice("kafka.brokers"),
-		viper.GetString("kafka.topic"), server.handleConsumerMessage)
+		viper.GetString("kafka.topic"), server.handleConsumerMessage, int32(8))
 	if err != nil {
 		log.Fatal(err)
 	}
